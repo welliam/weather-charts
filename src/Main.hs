@@ -1,9 +1,11 @@
 module Main where
 
-import Data.Maybe (maybe)
-import qualified Queries
+import qualified Args
 import qualified Chart
+import           Data.Maybe (maybe)
+import qualified Queries
 
 main :: IO ()
 main = do
-  Queries.getDayOfWeather >>= maybe (pure ()) Chart.render
+  -- tempHumidity <- Args.getTemperatureHumidity
+  Queries.getDayOfWeather >>= maybe (pure ()) ((>>= print) . Chart.render)

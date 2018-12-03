@@ -18,10 +18,15 @@ import qualified System.Random                          as Random
 
 import qualified Types
 
+
 type Layout = Chart.LayoutLR XValue YValue YValue
+
 type Axis = Chart.LayoutAxis YValue
+
 type ChartLines = Chart.PlotLines XValue YValue
+
 type XValue = Time.UTCTime
+
 type YValue = Int
 
 getWeather :: XValue -> [(XValue, YValue, YValue)]

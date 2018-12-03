@@ -1,22 +1,16 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Queries(getDayOfWeather, logWeather) where
 
-import qualified Data.Time as Time
 import qualified Data.ByteString.Char8 as ByteString
-import qualified Database.HDBC as HDBC
+import qualified Data.Time             as Time
+import qualified Database.HDBC         as HDBC
 import qualified Database.HDBC.Sqlite3 as Sqlite3
 
-import qualified Args
+import           Types                 (Location (..), Weather (..), created,
+                                        humidity, location, temperature)
 import qualified Types
-import Types
-  (Location(..),
-   Weather(..),
-   created,
-   temperature,
-   humidity,
-   location)
 
 
 weatherQuery
@@ -34,11 +28,9 @@ selectByDateRange
   -> IO (Maybe [Weather])
 selectByDateRange connection from to = print (from, to) >> weatherQuery
   connection
-  (unlines
-   ["select created, humidity, temperature, location from weather "
-   , "order by created "
-   , "where created >= ? and created < ?"
-   ])
+  (unlines ["select created, humidity, temperature, location from weather",
+            "where created >= ? and created < ?",
+            "order by created"])
   [serializeTime from, serializeTime to]
 
 insert :: Sqlite3.Connection -> Weather -> IO Integer
@@ -60,13 +52,13 @@ serializeWeather (Weather { created, humidity, temperature, location }) =
    serializeLocation location]
 
 serializeLocation :: Types.Location -> HDBC.SqlValue
-serializeLocation Inside = HDBC.SqlByteString "inside"
+serializeLocation Inside  = HDBC.SqlByteString "inside"
 serializeLocation Outside = HDBC.SqlByteString "outside"
 
 readLocation :: HDBC.SqlValue -> Maybe Types.Location
-readLocation (HDBC.SqlByteString "inside") = Just Inside
+readLocation (HDBC.SqlByteString "inside")  = Just Inside
 readLocation (HDBC.SqlByteString "outside") = Just Outside
-readLocation _ = Nothing
+readLocation _                              = Nothing
 
 readCreated :: HDBC.SqlValue -> Maybe Time.UTCTime
 readCreated (HDBC.SqlInt64 time) = Time.parseTimeM
@@ -78,7 +70,7 @@ readCreated _ = Nothing
 
 readSqlInt64 :: HDBC.SqlValue -> Maybe Int
 readSqlInt64 (HDBC.SqlInt64 x) = Just (fromIntegral x)
-readSqlInt64 _ = Nothing
+readSqlInt64 _                 = Nothing
 
 readWeatherRow :: [HDBC.SqlValue] -> Maybe Weather
 readWeatherRow [created, humidity, temperature, location] = do
@@ -102,26 +94,25 @@ get24HoursWeatherRows connection = do
   now <- Time.getCurrentTime
   selectByDateRange connection (minusOneDay now) now
 
-getCurrentWeather :: Types.Location -> IO Types.Weather
-getCurrentWeather location = do
-  (temperature, humidity) <- Args.getTemperatureHumidity
+getCurrentWeather :: Types.Location -> (Int, Int) -> IO Types.Weather
+getCurrentWeather location weather = do
+  let (temperature, humidity) = weather
   created <- Time.getCurrentTime
   pure (Types.Weather {temperature, humidity, created, location})
 
-getAndInsertCurrentWeather :: Sqlite3.Connection -> Types.Location -> IO ()
-getAndInsertCurrentWeather connection location = do
-  weather <- getCurrentWeather location
+getAndInsertCurrentWeather :: (Int, Int) -> Sqlite3.Connection -> Types.Location -> IO ()
+getAndInsertCurrentWeather tempHumidity connection location = do
+  weather <- getCurrentWeather location tempHumidity
   _ <- insert connection weather
   pure ()
 
 withWeatherTransaction :: (Sqlite3.Connection -> IO ()) -> IO ()
-withWeatherTransaction f = Sqlite3.connectSqlite3 "weather.db" >>=
-  (`HDBC.withTransaction` f)
+withWeatherTransaction f = Sqlite3.connectSqlite3 "weather.db" >>= (`HDBC.withTransaction` f)
 
-logWeather :: IO ()
-logWeather = do
+logWeather :: (Int, Int) -> IO ()
+logWeather tempHumidity = do
   connection <- Sqlite3.connectSqlite3 "weather.db"
-  getAndInsertCurrentWeather connection Inside
+  getAndInsertCurrentWeather tempHumidity connection Inside
   HDBC.commit connection
 
 getDayOfWeather :: IO (Maybe [Types.Weather])
