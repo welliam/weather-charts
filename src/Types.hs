@@ -5,8 +5,12 @@ import qualified Data.Time as Time
 data Location = Inside | Outside deriving Show
 
 data Weather
-  = Weather {created :: Time.UTCTime,
+  = Weather {created     :: Time.UTCTime,
              temperature :: Int,
-             humidity :: Int,
-             location :: Location}
+             humidity    :: Int,
+             location    :: Location}
   deriving Show
+
+data Args
+  = Insert (Int, Int)
+  | Chart

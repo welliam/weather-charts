@@ -1,23 +1,23 @@
-module Args (getTemperatureHumidity) where
+module Args (parseArgs) where
 
-import Options.Applicative
-  (Parser
-  , argument
-  , str
-  , helper
-  , help
-  , info
-  , fullDesc
-  , auto
-  , metavar
-  , execParser
-  )
-import Data.Monoid ((<>))
+import           Control.Applicative ((<$), (<|>))
+import           Data.Monoid         ((<>))
+import           Options.Applicative (Parser, argument, auto, execParser, flag',
+                                      fullDesc, help, helper, info, long,
+                                      metavar)
+import qualified Types
 
-sample :: Parser (Int, Int)
-sample = (\temperature humidity -> (temperature, humidity))
-     <$> argument auto (metavar "INTEGER" <> help "Temperature")
-     <*> argument auto (metavar "INTEGER" <> help "Humidity")
+integer :: String -> Parser Int
+integer flag = flag' True (long flag) *> argument auto (metavar "INTEGER" <> help flag)
 
-getTemperatureHumidity :: IO (Int, Int)
-getTemperatureHumidity = execParser (info (helper <*> sample) fullDesc)
+insertTempHumidity :: Parser Types.Args
+insertTempHumidity = mkInsert
+  <$> integer "temperature"
+  <*> integer "humidity"
+  where mkInsert t h = Types.Insert (t, h)
+
+chart :: Parser Types.Args
+chart = Types.Chart <$ flag' True (long "chart")
+
+parseArgs :: IO Types.Args
+parseArgs = execParser (info (helper <*> (insertTempHumidity <|> chart)) fullDesc)

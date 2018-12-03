@@ -26,7 +26,7 @@ selectByDateRange
   -> Time.UTCTime
   -> Time.UTCTime
   -> IO (Maybe [Weather])
-selectByDateRange connection from to = print (from, to) >> weatherQuery
+selectByDateRange connection from to = weatherQuery
   connection
   (unlines ["select created, humidity, temperature, location from weather",
             "where created >= ? and created < ?",
