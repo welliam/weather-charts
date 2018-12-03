@@ -6,5 +6,4 @@ import qualified Chart
 
 main :: IO ()
 main = do
-  Queries.getDayOfWeather >>= maybe (pure ()) print
-  Chart.main
+  Queries.getDayOfWeather >>= maybe (pure ()) Chart.render

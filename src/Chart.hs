@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
-module Chart (main) where
+module Chart (render) where
 
 import           Control.Lens                           (Identity, Lens', (.~))
 import qualified Data.ByteString                        as BS
@@ -15,6 +15,8 @@ import qualified Graphics.Rendering.Chart               as Chart
 import qualified Graphics.Rendering.Chart.Backend.Cairo as CairoChart
 import qualified System.IO                              as IO
 import qualified System.Random                          as Random
+
+import qualified Types
 
 type Layout = Chart.LayoutLR XValue YValue YValue
 type Axis = Chart.LayoutAxis YValue
@@ -32,10 +34,15 @@ getWeather currentTime
 options :: CairoChart.FileOptions
 options = CairoChart.FileOptions (800,600) CairoChart.SVG
 
-chart :: [(XValue, YValue, YValue)] -> Chart.Renderable ()
+weatherLineOf :: (Types.Weather -> Int) -> [Types.Weather] -> [(XValue, YValue)]
+weatherLineOf f weather = [(Types.created w, f w) | w <- weather]
+
+chart :: [Types.Weather] -> Chart.Renderable ()
 chart weather = Chart.toRenderable (getLayout (0, 100) weather1 weather2)
-  where weather1 = plot "Temperature" Colour.red [(d,v) | (d,v,_) <- weather]
-        weather2 = plot "Humidity" Colour.blue [(d,v) | (d,_,v) <- weather]
+  where weather1
+          = plot "Temperature" Colour.red (weatherLineOf Types.temperature weather)
+        weather2
+          = plot "Humidity" Colour.blue (weatherLineOf Types.humidity weather)
 
 formatAxis :: (YValue, YValue) -> Lens' Layout Axis -> Layout -> Layout
 formatAxis (min, max) axis layout =
@@ -68,12 +75,8 @@ inlineSVG svgBS
     <> Base64.encode svgBS
     <> "\" />"
 
-main :: IO ()
-main = do
-  weatherChart <- chart . getWeather <$> Time.getCurrentTime
+render :: [Types.Weather] -> IO BS.ByteString
+render weather = do
   tmpPath <- getTmpPath <$> Random.randomIO
-  _ <- CairoChart.renderableToFile options tmpPath weatherChart
-  svg <- inlineSVG <$> BS.readFile tmpPath
-  let path = "chart.html"
-  BS.writeFile path svg
-  putStrLn ("Done! Wrote to " <> path)
+  _ <- CairoChart.renderableToFile options tmpPath (chart weather)
+  inlineSVG <$> BS.readFile tmpPath
