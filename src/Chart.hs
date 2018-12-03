@@ -44,10 +44,8 @@ weatherLineOf f weather = [(Types.created w, f w) | w <- weather]
 
 chart :: [Types.Weather] -> Chart.Renderable ()
 chart weather = Chart.toRenderable (getLayout (0, 100) weather1 weather2)
-  where weather1
-          = plot "Temperature" Colour.red (weatherLineOf Types.temperature weather)
-        weather2
-          = plot "Humidity" Colour.blue (weatherLineOf Types.humidity weather)
+  where weather1 = plot "Temperature" Colour.red (weatherLineOf Types.temperature weather)
+        weather2 = plot "Humidity" Colour.blue (weatherLineOf Types.humidity weather)
 
 formatAxis :: (YValue, YValue) -> Lens' Layout Axis -> Layout -> Layout
 formatAxis (min, max) axis layout =
@@ -55,7 +53,7 @@ formatAxis (min, max) axis layout =
   $ axis . Chart.laxis_generate .~ Chart.autoAxis . (min:) . (max:)
   $ layout
 
-getLayout :: (YValue, YValue) -> ChartLines-> ChartLines-> Layout
+getLayout :: (YValue, YValue) -> ChartLines -> ChartLines -> Layout
 getLayout range leftPlot rightPlot =
   formatAxis' Chart.layoutlr_left_axis
   $ formatAxis' Chart.layoutlr_right_axis
