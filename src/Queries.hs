@@ -34,7 +34,11 @@ selectByDateRange
   -> IO (Maybe [Weather])
 selectByDateRange connection from to = print (from, to) >> weatherQuery
   connection
-  "select created, humidity, temperature, location from weather where created >= ? and created < ?"
+  (unlines
+   ["select created, humidity, temperature, location from weather "
+   , "order by created "
+   , "where created >= ? and created < ?"
+   ])
   [serializeTime from, serializeTime to]
 
 insert :: Sqlite3.Connection -> Weather -> IO Integer
