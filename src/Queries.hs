@@ -34,22 +34,18 @@ selectByDateRange connection from to = weatherQuery
   [serializeTime from, serializeTime to]
 
 insert :: Sqlite3.Connection -> Weather -> IO Integer
-insert connection weather = HDBC.run
+insert connection (Weather { created, humidity, temperature, location }) = HDBC.run
   connection
   "insert into weather (created, humidity, temperature, location) values (?, ?, ?, ?)"
-  (serializeWeather weather)
+  [serializeTime created,
+   HDBC.SqlInt64 (fromIntegral humidity),
+   HDBC.SqlInt64 (fromIntegral temperature),
+   serializeLocation location]
 
 serializeTime :: Time.UTCTime -> HDBC.SqlValue
 serializeTime = HDBC.SqlInt64
   . read
   . Time.formatTime Time.defaultTimeLocale "%s"
-
-serializeWeather :: Weather -> [HDBC.SqlValue]
-serializeWeather (Weather { created, humidity, temperature, location }) =
-  [serializeTime created,
-   HDBC.SqlInt64 (fromIntegral humidity),
-   HDBC.SqlInt64 (fromIntegral temperature),
-   serializeLocation location]
 
 serializeLocation :: Types.Location -> HDBC.SqlValue
 serializeLocation Inside  = HDBC.SqlByteString "inside"

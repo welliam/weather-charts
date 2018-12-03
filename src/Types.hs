@@ -12,5 +12,5 @@ data Weather
   deriving Show
 
 data Args
-  = Insert (Int, Int)
+  = Insert {temperatureArg :: Int, humidityArg :: Int}
   | Chart
