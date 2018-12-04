@@ -17,7 +17,6 @@ insertTempHumidity :: Parser Args
 insertTempHumidity = mkInsert
   <$> integer "temperature"
   <*> integer "humidity"
-  -- this looks backwards but is actually correct... i hope
   where mkInsert temperatureArg humidityArg = Insert {temperatureArg, humidityArg}
 
 chart :: Parser Args

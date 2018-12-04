@@ -31,15 +31,6 @@ selectByDateRange connection from to = weatherQuery
             "order by created"])
   [serializeTime from, serializeTime to]
 
-insert :: Sqlite3.Connection -> Weather -> IO Integer
-insert connection (Weather { created, humidity, temperature, location }) = HDBC.run
-  connection
-  "insert into weather (created, humidity, temperature, location) values (?, ?, ?, ?)"
-  [serializeTime created,
-   HDBC.SqlInt64 (fromIntegral humidity),
-   HDBC.SqlInt64 (fromIntegral temperature),
-   serializeLocation location]
-
 serializeTime :: Time.UTCTime -> HDBC.SqlValue
 serializeTime = HDBC.SqlInt64
   . read
@@ -93,6 +84,15 @@ getCurrentWeather location weather = do
   let (temperature, humidity) = weather
   created <- Time.getCurrentTime
   pure (Weather {temperature, humidity, created, location})
+
+insert :: Sqlite3.Connection -> Weather -> IO Integer
+insert connection (Weather { created, humidity, temperature, location }) = HDBC.run
+  connection
+  "insert into weather (created, humidity, temperature, location) values (?, ?, ?, ?)"
+  [serializeTime created,
+   HDBC.SqlInt64 (fromIntegral humidity),
+   HDBC.SqlInt64 (fromIntegral temperature),
+   serializeLocation location]
 
 getAndInsertCurrentWeather :: (Int, Int) -> Location -> Sqlite3.Connection -> IO ()
 getAndInsertCurrentWeather tempHumidity location connection = do

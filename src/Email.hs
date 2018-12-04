@@ -12,7 +12,12 @@ import qualified Network.HaskellNet.SMTP.SSL as SMTP
 import qualified Network.Mail.Mime           as Mime
 import qualified System.Environment          as Environment
 
-data Credentials = Credentials{username :: String, password :: String, to :: String} deriving Show
+data Credentials = Credentials
+  {username :: String,
+   password :: String,
+   to       :: String,
+   host     :: String}
+  deriving Show
 
 settings :: SMTP.Settings
 settings = SMTP.defaultSettingsSMTPSSL{SMTP.sslPort=465}
@@ -22,7 +27,8 @@ getCredentails = makeCreds
   <$> Environment.getEnv "WEATHER_CHARTS_EMAIL_USERNAME"
   <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_TO"
   <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_PASSWORD"
-  where makeCreds u t p = Credentials{username=u, to=t, password=p}
+  <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_HOST"
+  where makeCreds u t p h = Credentials{username=u, to=t, password=p, host=h}
 
 sendMail :: Credentials -> Mime.Mail -> SMTP.SMTPConnection -> IO ()
 sendMail Credentials{username, to} mail conn = do
@@ -47,12 +53,14 @@ inlineAttachment contentType filename bs Credentials{username, to} =
     cid = filename
     htmlBody = "<img src=\"cid:" <> cid <> "\" />"
 
+sendChartWithCredentials :: Credentials -> BS.ByteString -> IO ()
+sendChartWithCredentials credentials chart = do
+  let Credentials{username, host, password} = credentials
+  SMTP.doSMTPSSLWithSettings host settings $ \conn -> do
+    authenticated <- SMTP.authenticate SMTP.LOGIN username password conn
+    if authenticated
+      then sendMail credentials (inlineAttachment "img/png" "chart.png" chart credentials) conn
+      else putStrLn "Authentication failed!"
+
 sendChart :: BS.ByteString -> IO ()
-sendChart chart
-  = SMTP.doSMTPSSLWithSettings "smtp.gmail.com" settings $ \conn -> do
-      credentials <- getCredentails
-      let Credentials{username, password} = credentials
-      authenticated <- SMTP.authenticate SMTP.LOGIN username password conn
-      if authenticated
-        then sendMail credentials (inlineAttachment "img/png" "chart.png" chart credentials) conn
-        else putStrLn "Authentication failed!"
+sendChart chart = getCredentails >>= flip sendChartWithCredentials chart

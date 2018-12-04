@@ -24,20 +24,20 @@ type Axis = Chart.LayoutAxis YValue
 
 type ChartLines = Chart.PlotLines XValue YValue
 
-type XValue = Time.UTCTime
+type XValue = Time.LocalTime
 
 type YValue = Int
 
 options :: CairoChart.FileOptions
 options = CairoChart.FileOptions (800,600) CairoChart.PNG
 
-weatherLineOf :: (Types.Weather -> Int) -> [Types.Weather] -> [(XValue, YValue)]
-weatherLineOf f weather = [(Types.created w, f w) | w <- weather]
+weatherLineOf :: Time.TimeZone -> (Types.Weather -> Int) -> [Types.Weather] -> [(XValue, YValue)]
+weatherLineOf tz f weather = [(Time.utcToLocalTime tz (Types.created w), f w) | w <- weather]
 
-chart :: [Types.Weather] -> Chart.Renderable ()
-chart weather = Chart.toRenderable (getLayout (0, 100) weather1 weather2)
-  where weather1 = plot "Temperature" Colour.red (weatherLineOf Types.temperature weather)
-        weather2 = plot "Humidity" Colour.blue (weatherLineOf Types.humidity weather)
+chart :: Time.TimeZone -> [Types.Weather] -> Chart.Renderable ()
+chart tz weather = Chart.toRenderable (getLayout (0, 100) weather1 weather2)
+  where weather1 = plot "Temperature" Colour.red (weatherLineOf tz Types.temperature weather)
+        weather2 = plot "Humidity" Colour.blue (weatherLineOf tz Types.humidity weather)
 
 formatAxis :: (YValue, YValue) -> Lens' Layout Axis -> Layout -> Layout
 formatAxis (low, high) axis layout =
@@ -66,6 +66,7 @@ getTmpPath ext uuid = "/tmp/chart-" <> UUID.toString uuid <> ext
 
 render :: [Types.Weather] -> IO BS.ByteString
 render weather = do
+  timezone <- Time.getCurrentTimeZone
   tmpPath <- getTmpPath ".svg" <$> Random.randomIO
-  _ <- CairoChart.renderableToFile options tmpPath (chart weather)
+  _ <- CairoChart.renderableToFile options tmpPath (chart timezone weather)
   BS.readFile tmpPath
