@@ -45,7 +45,7 @@ inlineAttachment contentType filename bs Credentials{username, to} =
   where
     mail = Mime.simpleMailInMemory (fromString to) (fromString username) "chart" "" htmlBody []
     cid = filename
-    htmlBody = fromString "<img src=\"cid:" <> cid <> fromString "\" />"
+    htmlBody =  "<img src=\"cid:" <> cid <>  "\" />"
 
 sendChart :: BS.ByteString -> IO ()
 sendChart chart
