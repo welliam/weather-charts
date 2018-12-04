@@ -28,6 +28,6 @@ buildEmail Credentials{username, to} chart = SMTP.simpleMail
 sendChart :: BS.ByteString -> IO ()
 sendChart chart = do
   credentials <- getCredentails
-  let {username, password, to} = credentials
+  let Credentials{username, password, to} = credentials
   buildEmail credentials chart
   sendMailWithLogin "gmail.com" username password (Text.utf)
