@@ -1,0 +1,2 @@
+*/5 * * * * PATH_TO_BIN $(PATH_TO_GET_VALUES)
+30  5 * * * PATH_TO_BIN --chart
