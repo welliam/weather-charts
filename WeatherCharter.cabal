@@ -20,7 +20,8 @@ executable WeatherCharter
   other-modules: Args,
                  Chart,
                  Queries,
-                 Types
+                 Types,
+                 Email
   build-depends:       base >= 4.7 && < 5,
                        optparse-applicative,
                        time,
@@ -38,4 +39,5 @@ executable WeatherCharter
                        data-default,
                        data-default-class,
                        random,
-                       text
+                       text,
+                       mime-mail
