@@ -40,4 +40,6 @@ executable WeatherCharter
                        data-default-class,
                        random,
                        text,
-                       mime-mail
+                       mime-mail,
+                       HaskellNet,
+                       HaskellNet-SSL

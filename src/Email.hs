@@ -1,33 +1,59 @@
-{-# LANGUAGE NamedFieldPuns #-}
-module Email (send) where
+{-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-import           Data.ByteString    as BS
-import           Data.Text.Encoding as Text
-import           Network.Mail.Mime  (Address, Mail)
-import           Network.Mail.SMTP  as SMTP
-import           System.Environment as Environment
+module Email (sendChart) where
 
-data Credentials = Credentials{username :: String, password :: String, to :: String}
+import qualified Data.ByteString.Char8       as BS
+import qualified Data.ByteString.Lazy        as BSL
+import           Data.Monoid                 ((<>))
+import           Data.String                 (fromString)
+import qualified Data.Text.Encoding          as Text
+import qualified Data.Text.Lazy              as TextL
+import qualified Data.Text.Lazy              as Text
+import qualified Network.HaskellNet.SMTP.SSL as SMTP
+import qualified Network.Mail.Mime           as Mime
+import qualified System.Environment          as Environment
+
+data Credentials = Credentials{username :: String, password :: String, to :: String} deriving Show
 
 getCredentails :: IO Credentials
 getCredentails = makeCreds
   <$> Environment.getEnv "WEATHER_CHARTS_EMAIL_USERNAME"
-  <$> Environment.getEnv "WEATHER_CHARTS_EMAIL_TO"
+  <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_TO"
   <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_PASSWORD"
   where makeCreds u t p = Credentials{username=u, to=t, password=p}
 
-buildEmail :: Credentials -> BS.ByteString -> Mail
-buildEmail Credentials{username, to} chart = SMTP.simpleMail
-  Address{addressName=Nothing, addressEmail=username}
-  [Address{addressName=Nothing, addressEmail=to}] -- to
-  [] -- cc
-  [] -- bcc
-  "Weather charts" -- subject
-  [SMTP.htmlPart (Text.decodeUtf8 chart)]
+settings = SMTP.defaultSettingsSMTPSSL{SMTP.sslPort=465}
+
+sendMail :: Credentials -> Mime.Mail -> SMTP.SMTPConnection -> IO ()
+sendMail Credentials{username, to} mail conn
+  = Mime.renderMail' mail >>= \mail -> SMTP.sendMail username [to] (BSL.toStrict mail) conn
+
+inlineAttachment
+  :: Text.Text     -- contentType
+  -> Text.Text     -- filename
+  -> BS.ByteString -- attachment as bytestring
+  -> Credentials
+  -> Mime.Mail
+inlineAttachment contentType filename bs Credentials{username, to} =
+  Mime.addAttachmentBSCid
+    (TextL.toStrict contentType)
+    (TextL.toStrict cid)
+    (BSL.fromStrict bs)
+    (TextL.toStrict filename)
+    $ mail
+  where
+    mail = Mime.simpleMailInMemory (fromString to) (fromString username) "chart" "" htmlBody []
+    cid = filename
+    htmlBody = fromString "<img src=\"cid:" <> cid <> fromString "\" />"
 
 sendChart :: BS.ByteString -> IO ()
-sendChart chart = do
-  credentials <- getCredentails
-  let Credentials{username, password, to} = credentials
-  buildEmail credentials chart
-  sendMailWithLogin "gmail.com" username password (Text.utf)
+sendChart chart
+  = SMTP.doSMTPSSLWithSettings "smtp.gmail.com" settings $ \conn -> do
+      credentials <- getCredentails
+      let Credentials{username, password, to} = credentials
+      authenticated <- SMTP.authenticate SMTP.LOGIN username password conn
+      print (fromString (take 50 (BS.unpack chart)))
+      if authenticated
+        then sendMail credentials (inlineAttachment "img/png" "chart.png" chart credentials) conn
+        else print "fuck"

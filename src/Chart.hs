@@ -37,7 +37,7 @@ getWeather currentTime
     ,(currentTime, 60, 0)]
 
 options :: CairoChart.FileOptions
-options = CairoChart.FileOptions (800,600) CairoChart.SVG
+options = CairoChart.FileOptions (800,600) CairoChart.PNG
 
 weatherLineOf :: (Types.Weather -> Int) -> [Types.Weather] -> [(XValue, YValue)]
 weatherLineOf f weather = [(Types.created w, f w) | w <- weather]
@@ -74,7 +74,7 @@ getTmpPath ext uuid = "/tmp/chart-" <> UUID.toString uuid <> ext
 
 inlineSVG :: BS.ByteString -> BS.ByteString
 inlineSVG svgBS
-  = "<img src=\"data:image/svg+xml;base64,"
+  = "<img src=\"data:image/png;base64,"
     <> Base64.encode svgBS
     <> "\" />"
 
@@ -82,4 +82,4 @@ render :: [Types.Weather] -> IO BS.ByteString
 render weather = do
   tmpPath <- getTmpPath ".svg" <$> Random.randomIO
   _ <- CairoChart.renderableToFile options tmpPath (chart weather)
-  inlineSVG <$> BS.readFile tmpPath
+  BS.readFile tmpPath
