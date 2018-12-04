@@ -69,8 +69,8 @@ plot title colour values =
   $ Chart.plot_lines_title .~ title
   $ def
 
-getTmpPath :: UUID.UUID -> IO.FilePath
-getTmpPath uuid = "/tmp/chart-" <> UUID.toString uuid <> ".svg"
+getTmpPath :: String -> UUID.UUID -> IO.FilePath
+getTmpPath ext uuid = "/tmp/chart-" <> UUID.toString uuid <> ext
 
 inlineSVG :: BS.ByteString -> BS.ByteString
 inlineSVG svgBS
@@ -80,6 +80,6 @@ inlineSVG svgBS
 
 render :: [Types.Weather] -> IO BS.ByteString
 render weather = do
-  tmpPath <- getTmpPath <$> Random.randomIO
+  tmpPath <- getTmpPath ".svg" <$> Random.randomIO
   _ <- CairoChart.renderableToFile options tmpPath (chart weather)
   inlineSVG <$> BS.readFile tmpPath
