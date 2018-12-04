@@ -63,12 +63,10 @@ readWeatherRow [created, humidity, temperature, location] = do
   location' <- readLocation location
   humidity' <- readSqlInt64 humidity
   temperature' <- readSqlInt64 temperature
-  pure Weather
-    { created = created'
-    , location = location'
-    , temperature = temperature'
-    , humidity = humidity'
-    }
+  pure Weather{created = created',
+               location = location',
+               temperature = temperature',
+               humidity = humidity'}
 readWeatherRow _ = Nothing
 
 minusOneDay :: Time.UTCTime -> Time.UTCTime
@@ -86,7 +84,7 @@ getCurrentWeather location weather = do
   pure (Weather {temperature, humidity, created, location})
 
 insert :: Sqlite3.Connection -> Weather -> IO Integer
-insert connection (Weather { created, humidity, temperature, location }) = HDBC.run
+insert connection (Weather {created, humidity, temperature, location}) = HDBC.run
   connection
   "insert into weather (created, humidity, temperature, location) values (?, ?, ?, ?)"
   [serializeTime created,

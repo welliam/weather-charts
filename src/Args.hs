@@ -17,7 +17,7 @@ insertTempHumidity :: Parser Args
 insertTempHumidity = mkInsert
   <$> integer "temperature"
   <*> integer "humidity"
-  where mkInsert temperatureArg humidityArg = Insert {temperatureArg, humidityArg}
+  where mkInsert temperatureArg humidityArg = Insert{temperatureArg, humidityArg}
 
 chart :: Parser Args
 chart = longFlag "chart" (pure Chart)
