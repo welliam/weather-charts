@@ -30,8 +30,8 @@ sendMail Credentials{username, to} mail conn
   = Mime.renderMail' mail >>= \mail -> SMTP.sendMail username [to] (BSL.toStrict mail) conn
 
 inlineAttachment
-  :: Text.Text     -- contentType
-  -> Text.Text     -- filename
+  :: TextL.Text    -- contentType
+  -> TextL.Text    -- filename
   -> BS.ByteString -- attachment as bytestring
   -> Credentials
   -> Mime.Mail
@@ -45,7 +45,7 @@ inlineAttachment contentType filename bs Credentials{username, to} =
   where
     mail = Mime.simpleMailInMemory (fromString to) (fromString username) "chart" "" htmlBody []
     cid = filename
-    htmlBody =  "<img src=\"cid:" <> cid <>  "\" />"
+    htmlBody = "<img src=\"cid:" <> cid <> "\" />"
 
 sendChart :: BS.ByteString -> IO ()
 sendChart chart
@@ -53,7 +53,6 @@ sendChart chart
       credentials <- getCredentails
       let Credentials{username, password, to} = credentials
       authenticated <- SMTP.authenticate SMTP.LOGIN username password conn
-      print (fromString (take 50 (BS.unpack chart)))
       if authenticated
         then sendMail credentials (inlineAttachment "img/png" "chart.png" chart credentials) conn
-        else print "fuck"
+        else print "Authentication failed!"

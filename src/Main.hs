@@ -26,4 +26,4 @@ main = do
   args <- Args.parseArgs
   case args of
     Insert {temperatureArg, humidityArg} -> Queries.logWeather (temperatureArg, humidityArg)
-    Chart -> saveChart
+    Chart -> emailChart

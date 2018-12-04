@@ -72,12 +72,6 @@ plot title colour values =
 getTmpPath :: String -> UUID.UUID -> IO.FilePath
 getTmpPath ext uuid = "/tmp/chart-" <> UUID.toString uuid <> ext
 
-inlineSVG :: BS.ByteString -> BS.ByteString
-inlineSVG svgBS
-  = "<img src=\"data:image/png;base64,"
-    <> Base64.encode svgBS
-    <> "\" />"
-
 render :: [Types.Weather] -> IO BS.ByteString
 render weather = do
   tmpPath <- getTmpPath ".svg" <$> Random.randomIO
