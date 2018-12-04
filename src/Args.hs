@@ -1,18 +1,17 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Args  where
 
-import           Control.Applicative ((<$), (<|>))
+import           Control.Applicative ((<|>))
 import           Data.Monoid         ((<>))
-import           Options.Applicative (Parser, argument, auto, execParser, flag',
-                                      fullDesc, help, helper, info, long,
-                                      metavar, option)
+import           Options.Applicative (Parser, auto, execParser, flag', fullDesc,
+                                      help, helper, info, long, metavar, option)
 import           Types               (Args (..), humidityArg, temperatureArg)
-
-longFlag :: String -> Parser a -> Parser a
-longFlag = (*>) . flag' True . long
 
 integer :: String -> Parser Int
 integer flag = option auto (long flag <> metavar "INTEGER" <> help flag)
+
+longFlag :: String -> Parser a -> Parser a
+longFlag = (*>) . flag' True . long
 
 insertTempHumidity :: Parser Args
 insertTempHumidity = mkInsert

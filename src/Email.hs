@@ -7,14 +7,15 @@ import qualified Data.ByteString.Char8       as BS
 import qualified Data.ByteString.Lazy        as BSL
 import           Data.Monoid                 ((<>))
 import           Data.String                 (fromString)
-import qualified Data.Text.Encoding          as Text
 import qualified Data.Text.Lazy              as TextL
-import qualified Data.Text.Lazy              as Text
 import qualified Network.HaskellNet.SMTP.SSL as SMTP
 import qualified Network.Mail.Mime           as Mime
 import qualified System.Environment          as Environment
 
 data Credentials = Credentials{username :: String, password :: String, to :: String} deriving Show
+
+settings :: SMTP.Settings
+settings = SMTP.defaultSettingsSMTPSSL{SMTP.sslPort=465}
 
 getCredentails :: IO Credentials
 getCredentails = makeCreds
@@ -23,11 +24,10 @@ getCredentails = makeCreds
   <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_PASSWORD"
   where makeCreds u t p = Credentials{username=u, to=t, password=p}
 
-settings = SMTP.defaultSettingsSMTPSSL{SMTP.sslPort=465}
-
 sendMail :: Credentials -> Mime.Mail -> SMTP.SMTPConnection -> IO ()
-sendMail Credentials{username, to} mail conn
-  = Mime.renderMail' mail >>= \mail -> SMTP.sendMail username [to] (BSL.toStrict mail) conn
+sendMail Credentials{username, to} mail conn = do
+  renderedMail <- Mime.renderMail' mail
+  SMTP.sendMail username [to] (BSL.toStrict renderedMail) conn
 
 inlineAttachment
   :: TextL.Text    -- contentType
@@ -51,8 +51,8 @@ sendChart :: BS.ByteString -> IO ()
 sendChart chart
   = SMTP.doSMTPSSLWithSettings "smtp.gmail.com" settings $ \conn -> do
       credentials <- getCredentails
-      let Credentials{username, password, to} = credentials
+      let Credentials{username, password} = credentials
       authenticated <- SMTP.authenticate SMTP.LOGIN username password conn
       if authenticated
         then sendMail credentials (inlineAttachment "img/png" "chart.png" chart credentials) conn
-        else print "Authentication failed!"
+        else putStrLn "Authentication failed!"

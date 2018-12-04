@@ -2,9 +2,8 @@
 {-# LANGUAGE RankNTypes        #-}
 module Chart (render) where
 
-import           Control.Lens                           (Identity, Lens', (.~))
+import           Control.Lens                           (Lens', (.~))
 import qualified Data.ByteString                        as BS
-import qualified Data.ByteString.Base64                 as Base64
 import qualified Data.Colour                            as Colour
 import qualified Data.Colour.Names                      as Colour
 import           Data.Default.Class                     (def)
@@ -29,13 +28,6 @@ type XValue = Time.UTCTime
 
 type YValue = Int
 
-getWeather :: XValue -> [(XValue, YValue, YValue)]
-getWeather currentTime
-  = [(Time.addUTCTime (-90) currentTime, 0, 60)
-    ,(Time.addUTCTime (-60) currentTime, 20, 40)
-    ,(Time.addUTCTime (-30) currentTime, 40, 120)
-    ,(currentTime, 60, 0)]
-
 options :: CairoChart.FileOptions
 options = CairoChart.FileOptions (800,600) CairoChart.PNG
 
@@ -48,9 +40,9 @@ chart weather = Chart.toRenderable (getLayout (0, 100) weather1 weather2)
         weather2 = plot "Humidity" Colour.blue (weatherLineOf Types.humidity weather)
 
 formatAxis :: (YValue, YValue) -> Lens' Layout Axis -> Layout -> Layout
-formatAxis (min, max) axis layout =
+formatAxis (low, high) axis layout =
   axis . Chart.laxis_override .~ Chart.axisGridHide
-  $ axis . Chart.laxis_generate .~ Chart.autoAxis . (min:) . (max:)
+  $ axis . Chart.laxis_generate .~ Chart.autoAxis . (low:) . (high:)
   $ layout
 
 getLayout :: (YValue, YValue) -> ChartLines -> ChartLines -> Layout

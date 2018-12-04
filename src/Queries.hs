@@ -3,21 +3,19 @@
 
 module Queries(getDayOfWeather, logWeather) where
 
-import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.Time             as Time
 import qualified Database.HDBC         as HDBC
 import qualified Database.HDBC.Sqlite3 as Sqlite3
 
 import           Types                 (Location (..), Weather (..), created,
                                         humidity, location, temperature)
-import qualified Types
 
 
 weatherQuery
   :: Sqlite3.Connection
   -> String
   -> [HDBC.SqlValue]
-  -> IO (Maybe [Types.Weather])
+  -> IO (Maybe [Weather])
 weatherQuery connection query args = sequenceA . map readWeatherRow
   <$> HDBC.quickQuery' connection query args
 
@@ -47,11 +45,11 @@ serializeTime = HDBC.SqlInt64
   . read
   . Time.formatTime Time.defaultTimeLocale "%s"
 
-serializeLocation :: Types.Location -> HDBC.SqlValue
+serializeLocation :: Location -> HDBC.SqlValue
 serializeLocation Inside  = HDBC.SqlByteString "inside"
 serializeLocation Outside = HDBC.SqlByteString "outside"
 
-readLocation :: HDBC.SqlValue -> Maybe Types.Location
+readLocation :: HDBC.SqlValue -> Maybe Location
 readLocation (HDBC.SqlByteString "inside")  = Just Inside
 readLocation (HDBC.SqlByteString "outside") = Just Outside
 readLocation _                              = Nothing
@@ -85,33 +83,30 @@ readWeatherRow _ = Nothing
 minusOneDay :: Time.UTCTime -> Time.UTCTime
 minusOneDay time = Time.addUTCTime (-1 * 60 * 60 * 24) time
 
-get24HoursWeatherRows :: Sqlite3.Connection -> IO (Maybe [Types.Weather])
+get24HoursWeatherRows :: Sqlite3.Connection -> IO (Maybe [Weather])
 get24HoursWeatherRows connection = do
   now <- Time.getCurrentTime
   selectByDateRange connection (minusOneDay now) now
 
-getCurrentWeather :: Types.Location -> (Int, Int) -> IO Types.Weather
+getCurrentWeather :: Location -> (Int, Int) -> IO Weather
 getCurrentWeather location weather = do
   let (temperature, humidity) = weather
   created <- Time.getCurrentTime
-  pure (Types.Weather {temperature, humidity, created, location})
+  pure (Weather {temperature, humidity, created, location})
 
-getAndInsertCurrentWeather :: (Int, Int) -> Sqlite3.Connection -> Types.Location -> IO ()
-getAndInsertCurrentWeather tempHumidity connection location = do
+getAndInsertCurrentWeather :: (Int, Int) -> Location -> Sqlite3.Connection -> IO ()
+getAndInsertCurrentWeather tempHumidity location connection = do
   weather <- getCurrentWeather location tempHumidity
   _ <- insert connection weather
   pure ()
 
-withWeatherTransaction :: (Sqlite3.Connection -> IO ()) -> IO ()
-withWeatherTransaction f = Sqlite3.connectSqlite3 "weather.db" >>= (`HDBC.withTransaction` f)
-
 logWeather :: (Int, Int) -> IO ()
 logWeather tempHumidity = do
   connection <- Sqlite3.connectSqlite3 "weather.db"
-  getAndInsertCurrentWeather tempHumidity connection Inside
+  getAndInsertCurrentWeather tempHumidity Inside connection
   HDBC.commit connection
 
-getDayOfWeather :: IO (Maybe [Types.Weather])
+getDayOfWeather :: IO (Maybe [Weather])
 getDayOfWeather = do
   connection <- Sqlite3.connectSqlite3 "weather.db"
   get24HoursWeatherRows connection

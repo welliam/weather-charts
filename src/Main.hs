@@ -8,13 +8,12 @@ import           Data.Maybe      (maybe)
 import qualified Email
 import qualified Queries
 import           Types           (Args (..), humidityArg, temperatureArg)
-import qualified Types
-
-withChart :: (BS.ByteString -> IO ()) -> IO ()
-withChart f = Queries.getDayOfWeather >>= maybe (pure ()) ((>>= f) . Chart.render)
 
 emailChart :: IO ()
 emailChart = withChart Email.sendChart
+
+withChart :: (BS.ByteString -> IO ()) -> IO ()
+withChart f = Queries.getDayOfWeather >>= maybe (pure ()) ((>>= f) . Chart.render)
 
 saveChart :: IO ()
 saveChart = do
