@@ -28,7 +28,7 @@ getCredentails = makeCreds
   <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_TO"
   <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_PASSWORD"
   <*> Environment.getEnv "WEATHER_CHARTS_EMAIL_HOST"
-  where makeCreds u t p h = Credentials{username=u, to=t, password=p, host=h}
+  where makeCreds username to password host = Credentials{username, to, password, host}
 
 sendMail :: Credentials -> Mime.Mail -> SMTP.SMTPConnection -> IO ()
 sendMail Credentials{username, to} mail conn = do
@@ -44,14 +44,13 @@ inlineAttachment
 inlineAttachment contentType filename bs Credentials{username, to} =
   Mime.addAttachmentBSCid
     (TextL.toStrict contentType)
-    (TextL.toStrict cid)
+    (TextL.toStrict filename)
     (BSL.fromStrict bs)
     (TextL.toStrict filename)
     $ mail
   where
     mail = Mime.simpleMailInMemory (fromString to) (fromString username) "chart" "" htmlBody []
-    cid = filename
-    htmlBody = "<img src=\"cid:" <> cid <> "\" />"
+    htmlBody = "<img src=\"cid:" <> filename <> "\" />"
 
 sendChartWithCredentials :: Credentials -> BS.ByteString -> IO ()
 sendChartWithCredentials credentials chart = do
