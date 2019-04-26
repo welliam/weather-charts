@@ -6,24 +6,27 @@ module Queries(getDayOfWeather, logWeather) where
 import qualified Data.Time             as Time
 import qualified Database.HDBC         as HDBC
 import qualified Database.HDBC.Sqlite3 as Sqlite3
+import qualified Interfaces
 
 import           Types                 (Location (..), Weather (..), created,
                                         humidity, location, temperature)
 
 
 weatherQuery
-  :: Sqlite3.Connection
+  :: Interfaces.MonadDB m
+  => Sqlite3.Connection
   -> String
   -> [HDBC.SqlValue]
-  -> IO (Maybe [Weather])
+  -> m (Maybe [Weather])
 weatherQuery connection query args = sequenceA . map readWeatherRow
-  <$> HDBC.quickQuery' connection query args
+  <$> Interfaces.quickQuery' connection query args
 
 selectByDateRange
-  :: Sqlite3.Connection
+  :: Interfaces.MonadDB m =>
+    Sqlite3.Connection
   -> Time.UTCTime
   -> Time.UTCTime
-  -> IO (Maybe [Weather])
+  -> m (Maybe [Weather])
 selectByDateRange connection from to = weatherQuery
   connection
   (unlines ["select created, humidity, temperature, location from weather",
@@ -72,39 +75,46 @@ readWeatherRow _ = Nothing
 minusOneDay :: Time.UTCTime -> Time.UTCTime
 minusOneDay time = Time.addUTCTime (-1 * 60 * 60 * 24) time
 
-get24HoursWeatherRows :: Sqlite3.Connection -> IO (Maybe [Weather])
+get24HoursWeatherRows
+  :: (Interfaces.MonadDB m, Interfaces.MonadTime m)
+  => Sqlite3.Connection -> m (Maybe [Weather])
 get24HoursWeatherRows connection = do
-  now <- Time.getCurrentTime
+  now <- Interfaces.getCurrentTime
   selectByDateRange connection (minusOneDay now) now
 
-getCurrentWeather :: Location -> (Int, Int) -> IO Weather
+getCurrentWeather :: Interfaces.MonadTime m => Location -> (Int, Int) -> m Weather
 getCurrentWeather location weather = do
   let (temperature, humidity) = weather
-  created <- Time.getCurrentTime
+  created <- Interfaces.getCurrentTime
   pure (Weather {temperature, humidity, created, location})
 
-insert :: Sqlite3.Connection -> Weather -> IO Integer
-insert connection (Weather {created, humidity, temperature, location}) = HDBC.run
+insert :: Interfaces.MonadDB m => Sqlite3.Connection -> Weather -> m Integer
+insert connection (Weather {created, humidity, temperature, location}) = Interfaces.run
   connection
   "insert into weather (created, humidity, temperature, location) values (?, ?, ?, ?)"
   [serializeTime created,
-   HDBC.SqlInt64 (fromIntegral humidity),
-   HDBC.SqlInt64 (fromIntegral temperature),
-   serializeLocation location]
+    HDBC.SqlInt64 (fromIntegral humidity),
+    HDBC.SqlInt64 (fromIntegral temperature),
+    serializeLocation location]
 
-getAndInsertCurrentWeather :: (Int, Int) -> Location -> Sqlite3.Connection -> IO ()
+getAndInsertCurrentWeather
+  :: (Interfaces.MonadDB m, Interfaces.MonadTime m)
+  => (Int, Int)
+  -> Location
+  -> Sqlite3.Connection
+  -> m ()
 getAndInsertCurrentWeather tempHumidity location connection = do
   weather <- getCurrentWeather location tempHumidity
   _ <- insert connection weather
   pure ()
 
-logWeather :: (Int, Int) -> IO ()
+logWeather :: (Interfaces.MonadTime m, Interfaces.MonadDB m) => (Int, Int) -> m ()
 logWeather tempHumidity = do
-  connection <- Sqlite3.connectSqlite3 "weather.db"
+  connection <- Interfaces.connect "weather.db"
   getAndInsertCurrentWeather tempHumidity Inside connection
-  HDBC.commit connection
+  Interfaces.commit connection
 
-getDayOfWeather :: IO (Maybe [Weather])
+getDayOfWeather :: (Interfaces.MonadTime m, Interfaces.MonadDB m) => m (Maybe [Weather])
 getDayOfWeather = do
-  connection <- Sqlite3.connectSqlite3 "weather.db"
+  connection <- Interfaces.connect "weather.db"
   get24HoursWeatherRows connection

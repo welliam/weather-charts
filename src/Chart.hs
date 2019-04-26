@@ -12,9 +12,8 @@ import qualified Data.Time                              as Time
 import qualified Data.UUID                              as UUID
 import qualified Graphics.Rendering.Chart               as Chart
 import qualified Graphics.Rendering.Chart.Backend.Cairo as CairoChart
-import qualified System.IO                              as IO
-import qualified System.Random                          as Random
 
+import qualified Interfaces
 import qualified Types
 
 
@@ -36,13 +35,14 @@ weatherLineOf tz f weather = [(Time.utcToLocalTime tz (Types.created w), f w) | 
 
 chart :: Time.TimeZone -> [Types.Weather] -> Chart.Renderable ()
 chart tz weather = Chart.toRenderable (getLayout (0, 100) weather1 weather2)
-  where weather1 = plot "Temperature" Colour.red (weatherLineOf tz Types.temperature weather)
-        weather2 = plot "Humidity" Colour.blue (weatherLineOf tz Types.humidity weather)
+  where weather1 = plot' "Temperature" Colour.red Types.temperature
+        weather2 = plot' "Humidity" Colour.blue Types.humidity
+        plot' name color get = plot name color . weatherLineOf tz get $ weather
 
 formatAxis :: (YValue, YValue) -> Lens' Layout Axis -> Layout -> Layout
 formatAxis (low, high) axis layout =
   axis . Chart.laxis_override .~ Chart.axisGridHide
-  $ axis . Chart.laxis_generate .~ Chart.autoAxis . (low:) . (high:)
+  $ axis . Chart.laxis_generate .~ Chart.autoAxis . (low:) . (high:) -- gross hack
   $ layout
 
 getLayout :: (YValue, YValue) -> ChartLines -> ChartLines -> Layout
@@ -61,12 +61,17 @@ plot title colour values =
   $ Chart.plot_lines_title .~ title
   $ def
 
-getTmpPath :: String -> UUID.UUID -> IO.FilePath
+getTmpPath :: String -> UUID.UUID -> FilePath
 getTmpPath ext uuid = "/tmp/chart-" <> UUID.toString uuid <> ext
 
-render :: [Types.Weather] -> IO BS.ByteString
+render ::
+  (Interfaces.MonadTime m,
+   Interfaces.MonadRandom m,
+   Interfaces.MonadChart m,
+   Interfaces.MonadFileSystem m)
+  => [Types.Weather] -> m BS.ByteString
 render weather = do
-  timezone <- Time.getCurrentTimeZone
-  tmpPath <- getTmpPath ".svg" <$> Random.randomIO
-  _ <- CairoChart.renderableToFile options tmpPath (chart timezone weather)
-  BS.readFile tmpPath
+  timezone <- Interfaces.getCurrentTimeZone
+  tmpPath <- getTmpPath ".svg" <$> Interfaces.random
+  _ <- Interfaces.renderableToFile options tmpPath (chart timezone weather)
+  Interfaces.bsReadFile tmpPath

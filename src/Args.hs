@@ -3,8 +3,9 @@ module Args  where
 
 import           Control.Applicative ((<|>))
 import           Data.Monoid         ((<>))
-import           Options.Applicative (Parser, auto, execParser, flag', fullDesc,
-                                      help, helper, info, long, metavar, option)
+import qualified Interfaces
+import           Options.Applicative (Parser, auto, flag', fullDesc, help,
+                                      helper, info, long, metavar, option)
 import           Types               (Args (..), humidityArg, temperatureArg)
 
 integer :: String -> Parser Int
@@ -22,5 +23,5 @@ insertTempHumidity = mkInsert
 chart :: Parser Args
 chart = longFlag "chart" (pure Chart)
 
-parseArgs :: IO Args
-parseArgs = execParser (info (helper <*> (insertTempHumidity <|> chart)) fullDesc)
+parseArgs :: Interfaces.MonadArgs m => m Args
+parseArgs = Interfaces.execParser (info (helper <*> (insertTempHumidity <|> chart)) fullDesc)

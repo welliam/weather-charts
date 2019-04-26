@@ -21,7 +21,8 @@ executable weather-charter
                  Chart,
                  Queries,
                  Types,
-                 Email
+                 Email,
+                 Interfaces
   build-depends:       base >= 4.7 && < 5,
                        optparse-applicative,
                        time,

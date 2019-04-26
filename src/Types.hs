@@ -15,3 +15,5 @@ data Args
   = Insert {temperatureArg :: Int, humidityArg :: Int}
   | Chart
   deriving Show
+
+-- effects
